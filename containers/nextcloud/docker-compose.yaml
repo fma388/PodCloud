@@ -1,0 +1,46 @@
+version: '3'
+services: 
+    db:
+      image: docker.io/library/mariadb:latest
+      container_name: ${PODNAME}-db
+      environment:
+        MYSQL_ROOT_PASSWORD: "nextcloud"
+        MYSQL_DATABASE: "nextcloud" 
+        MYSQL_USER: "nextcloud" 
+        MYSQL_PASSWORD: "nextcloud"
+      volumes:
+        - ${HOME}/containers/nextcloud/db:/var/lib/mysql:Z
+      command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+      
+    redis: 
+        image: docker.io/library/redis:alpine
+        container_name: ${PODNAME}-redis
+        command: redis-server --requirepass nextcloud
+        
+    app:
+      image: docker.io/library/nextcloud:fpm-alpine
+      container_name: ${PODNAME}-app
+      environment:
+        REDIS_HOST: "localhost"
+        REDIS_HOST_PASSWORD: "nextcloud"
+        MYSQL_HOST: "localhost"
+        MYSQL_USER: "nextcloud"
+        MYSQL_PASSWORD: "nextcloud"
+        MYSQL_DATABASE: "nextcloud"
+      volumes:
+        - ${HOME}/containers/nextcloud/html:/var/www/html:z
+        
+    cron:
+        image: docker.io/library/nextcloud:fpm-alpine
+        container_name: ${PODNAME}-cron
+        volumes:
+          - ${HOME}/containers/nextcloud/html:/var/www/html:z
+        entrypoint: /cron.sh
+        
+    nginx: 
+        image: docker.io/library/nginx:alpine
+        container_name: ${PODNAME}-nginx
+        volumes: 
+          - ${HOME}/containers/nextcloud/html:/var/www/html:ro,z
+          - ${HOME}/containers/nextcloud/nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
+          - ${HOME}/containers/nextcloud/nginx/ssl:/etc/nginx/ssl:z
